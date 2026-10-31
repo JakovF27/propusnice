@@ -1,0 +1,23 @@
+<%- include('partials/header', { title: 'Propusnica' }) %>
+
+<h1>Propusnica</h1>
+
+<div class="card">
+  <p class="status status-<%= pass.status %>"><%= pass.status %></p>
+
+  <dl>
+    <dt>Ime i prezime</dt>
+    <dd><%= pass.name %></dd>
+
+    <dt>Dokument</dt>
+    <dd><%= pass.document %></dd>
+
+    <dt>Vrijeme izdavanja</dt>
+    <dd><%= issuedAt %></dd>
+
+    <dt>ID</dt>
+    <dd class="mono"><%= pass.id %></dd>
+  </dl>
+</div>
+
+<%- include('partials/footer') %>
