@@ -13,4 +13,50 @@
   </div>
 </div>
 
+<% if (isAuthenticated) { %>
+  <h2>Sve propusnice</h2>
+
+  <% if (passes.length === 0) { %>
+    <p>Nema propusnica.</p>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Ime i prezime</th>
+            <th>Dokument</th>
+            <th>Izdano</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% passes.forEach((pass) => { %>
+            <tr>
+              <td><%= pass.name %></td>
+              <td><%= pass.document %></td>
+              <td><%= pass.issuedAt %></td>
+              <td><span class="status status-<%= pass.status %>"><%= pass.status %></span></td>
+              <td class="actions">
+                <a href="/info/<%= pass.id %>">Detalji</a>
+                <% if (pass.status === 'ACTIVE') { %>
+                  <form method="POST" action="/admin/passes/<%= pass.id %>/cancel">
+                    <button type="submit">Poništi</button>
+                  </form>
+                <% } %>
+                <form method="POST" action="/admin/passes/<%= pass.id %>/delete"
+                      onsubmit="return confirm('Sigurno obrisati ovu propusnicu?')">
+                  <button type="submit" class="danger">Obriši</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+<% } else { %>
+  <p><a href="/login">Prijavi se</a> za pregled i upravljanje propusnicama.</p>
+<% } %>
+
 <%- include('partials/footer') %>

@@ -9,5 +9,13 @@
 <body>
   <header>
     <a href="/" class="logo">Propusnice</a>
+    <nav>
+      <% if (isAuthenticated) { %>
+        <span class="user"><%= user.email || user.name %></span>
+        <a href="/logout" class="button">Odjava</a>
+      <% } else { %>
+        <a href="/login" class="button">Prijava</a>
+      <% } %>
+    </nav>
   </header>
   <main>
