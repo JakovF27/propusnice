@@ -7,7 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "db:init": "node db/init.js"
+    "db:init": "node db/init.js",
+    "typecheck": "tsc -p src/task2",
+    "issue": "node src/task2/issue.ts"
   },
   "keywords": [],
   "author": "",
@@ -24,5 +26,9 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2"
   }
 }
