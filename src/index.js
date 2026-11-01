@@ -3,6 +3,7 @@ require('dotenv').config();
 const path = require('path');
 const express = require('express');
 const { auth, requiresAuth } = require('express-openid-connect');
+const { auth: jwtAuth, requiredScopes } = require('express-oauth2-jwt-bearer');
 const db = require('./db');
 
 const app = express();
@@ -30,6 +31,12 @@ app.use(
     },
   })
 );
+
+const checkJwt = jwtAuth({
+  audience: process.env.AUTH0_AUDIENCE,
+  issuerBaseURL: process.env.AUTH0_ISSUER_BASE_URL,
+  tokenSigningAlg: 'RS256',
+});
 
 app.use((req, res, next) => {
   res.locals.isAuthenticated = req.oidc.isAuthenticated();
@@ -118,8 +125,49 @@ app.post('/admin/passes/:id/delete', requiresAuth(), async (req, res) => {
   res.redirect('/');
 });
 
+app.get('/passes/:id', checkJwt, requiredScopes('read:passes'), async (req, res) => {
+  const { id } = req.params;
+
+  if (!UUID_REGEX.test(id)) {
+    return res.status(404).json({ error: 'not_found' });
+  }
+
+  const result = await db.query(
+    'SELECT id, name, document, issued_at, status FROM passes WHERE id = $1',
+    [id]
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({ error: 'not_found' });
+  }
+
+  res.json(toPassJson(result.rows[0]));
+});
+
+function toPassJson(pass) {
+  return {
+    id: pass.id,
+    name: pass.name,
+    document: pass.document,
+    issuedAt: pass.issued_at.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+    status: pass.status,
+  };
+}
+
 app.use((req, res) => {
   res.status(404).render('not-found');
+});
+
+app.use((err, req, res, next) => {
+  if (err.status === 401 || err.status === 403) {
+    if (err.headers) {
+      res.set(err.headers);
+    }
+    return res.status(err.status).json({ error: err.code || 'unauthorized', message: err.message });
+  }
+
+  console.error(err);
+  res.status(500).json({ error: 'server_error' });
 });
 
 app.listen(PORT, () => {
