@@ -4,11 +4,13 @@ const path = require('path');
 const express = require('express');
 const { auth, requiresAuth } = require('express-openid-connect');
 const { auth: jwtAuth, requiredScopes } = require('express-oauth2-jwt-bearer');
+const QRCode = require('qrcode');
 const db = require('./db');
 
 const app = express();
 
 const PORT = process.env.PORT || 3000;
+const BASE_URL = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -144,6 +146,35 @@ app.get('/passes/:id', checkJwt, requiredScopes('read:passes'), async (req, res)
   res.json(toPassJson(result.rows[0]));
 });
 
+app.post('/passes', checkJwt, requiredScopes('create:passes'), express.json(), async (req, res) => {
+  const { name, document } = req.body ?? {};
+
+  if (!isNonEmptyString(name) || !isNonEmptyString(document)) {
+    return res.status(400).json({
+      error: 'bad_request',
+      message: 'Polja "name" i "document" su obavezna i ne smiju biti prazna.',
+    });
+  }
+
+  const result = await db.query(
+    'INSERT INTO passes (name, document) VALUES ($1, $2) RETURNING id',
+    [name.trim(), document.trim()]
+  );
+  const { id } = result.rows[0];
+
+  const qrPng = await QRCode.toBuffer(`${BASE_URL}/info/${id}`, { type: 'png', width: 300 });
+
+  res
+    .status(201)
+    .location(`${BASE_URL}/passes/${id}`)
+    .type('image/png')
+    .send(qrPng);
+});
+
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim() !== '';
+}
+
 function toPassJson(pass) {
   return {
     id: pass.id,
@@ -159,11 +190,12 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
-  if (err.status === 401 || err.status === 403) {
+  if (err.status >= 400 && err.status < 500) {
     if (err.headers) {
       res.set(err.headers);
     }
-    return res.status(err.status).json({ error: err.code || 'unauthorized', message: err.message });
+    const fallback = err.status === 401 ? 'unauthorized' : 'bad_request';
+    return res.status(err.status).json({ error: err.code || err.type || fallback, message: err.message });
   }
 
   console.error(err);
